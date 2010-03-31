@@ -1,4 +1,4 @@
-^parser$
+^driver$
 \.hi
 \.o
 
