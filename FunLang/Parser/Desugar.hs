@@ -34,7 +34,7 @@ desugar (InfixExpr first rest) =
     where
     
     shunting_yard =
-        pop (foldl shunt yard operands)
+        popAll (foldl shunt yard operands)
         where
         operands = map dsg rest
         dsg (op, operand) =
@@ -42,10 +42,12 @@ desugar (InfixExpr first rest) =
                 Just operator -> (operator, desugar operand)
                 Nothing -> error ("Can't find infix operator: " ++ op)
     
-    pop ([], queue) = ([], queue)
+    popAll ([], queue) = ([], queue)
+    popAll yard = popAll (pop yard)
+    
     pop (((InfixOp opName _ _):bottom), (l:r:queue)) =
         let application = (Application (Id opName) [r, l])
-        in pop (bottom, application:queue)
+        in (bottom, application:queue)
     pop (stack, queue) = error ("Cannot pop (" ++ show stack ++ ", " ++ show queue ++ ")")
    
     shunt :: ([InfixOperator],[Desugared]) -> (InfixOperator, Desugared) -> ([InfixOperator],[Desugared])
