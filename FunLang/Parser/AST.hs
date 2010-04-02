@@ -9,6 +9,7 @@ data Expression =
     | ConditionExpr [(Expression, Expression)] Expression
     | LetExpr [(Identifier, Expression)] Expression
     | LambdaExpr [Identifier] Expression
+    | ConstantExpr Integer
     | IdExpr Identifier
     deriving Show
 

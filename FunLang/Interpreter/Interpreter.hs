@@ -57,6 +57,8 @@ evaluate frames (Conditional conds alternative) =
                     then evaluate frames cons
                     else eval_cond rest alt
             _ -> error "Wrong type in condition"
+
+evaluate frames (Constant value) = IntegerValue value
     
 evaluate frames (Id identifier) =
     case (lookupValue frames identifier) of

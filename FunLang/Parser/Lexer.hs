@@ -10,7 +10,7 @@ keywords = ["if", "then", "elif", "else", "let", "in", "lambda"]
 langdef =
     Token.LanguageDef
         "{-" "-}" "--" True  -- comments
-        alphaNum (alphaNum <|> oneOf "_")   -- identifiers (start, rest)
+        letter (alphaNum <|> oneOf "_")   -- identifiers (start, rest)
         opChar opChar   -- operators (first, rest)
         keywords -- keywords
         ["=", ":"] -- reserved operators
@@ -26,3 +26,5 @@ operator = Token.operator lexer
 reserved = Token.reserved lexer
 reservedOp = Token.reservedOp lexer
 commaSep1 = Token.commaSep1 lexer
+natural = Token.natural lexer
+

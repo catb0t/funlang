@@ -16,7 +16,7 @@ instance Show Function where
     show (PartialApplication fun args) = "Partial application " ++ show fun ++ " " ++ show args
 
 data Value =
-    IntegerValue Int
+    IntegerValue Integer
     | FunctionValue Function
     deriving Show
 

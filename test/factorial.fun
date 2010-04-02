@@ -4,5 +4,6 @@ let
             then fac (x + neg 1)
             else 1
 in
-    fac (1+1+1+1+1)
+    fac 5
+
 

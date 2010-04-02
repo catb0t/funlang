@@ -5,8 +5,13 @@ import Text.Parsec
 import FunLang.Parser.Lexer
 import FunLang.Parser.AST
 
+constant_expr = do
+    value <- natural
+    return (ConstantExpr value)
+        <?> "constant"
+
 atomic_expr =
-    id_expr <|> parens expression <?> "atomic expression"
+    id_expr <|> constant_expr <|> parens expression <?> "atomic expression"
     where
     id_expr = do
         name <- identifier

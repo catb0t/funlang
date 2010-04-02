@@ -17,8 +17,6 @@ neg_fun ((IntegerValue x):[]) = IntegerValue (-x)
 neg_fun _ = error "Invalid parameters for add"
 
 builtins = Map.fromList [
-    ("0", IntegerValue 0),
-    ("1", IntegerValue 1),
     ("+", FunctionValue (BuiltInFunction 2 add_fun)),
     ("add", FunctionValue (BuiltInFunction 2 add_fun)),
     ("neg", FunctionValue (BuiltInFunction 1 neg_fun))

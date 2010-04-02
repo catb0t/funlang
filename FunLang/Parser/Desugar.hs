@@ -9,6 +9,7 @@ data Desugared =
     Application [Desugared]
     | Lambda [Identifier] Desugared
     | Conditional [(Desugared, Desugared)] Desugared
+    | Constant Integer
     | Id Identifier
     deriving (Show,Eq)
 
@@ -44,7 +45,11 @@ desugar symbols (LetExpr bindings expr) =
     values = map (desugar symbols . snd) bindings
         
 desugar symbols (LambdaExpr args expr) = Lambda args (desugar symbols expr)
+
+desugar symbols (ConstantExpr value) = Constant value
+
 desugar symbols (IdExpr name) = Id name
+
 
 
 
