@@ -3,6 +3,7 @@ module Main where
 import Text.Parsec
 import FunLang.Parser.Parser
 import FunLang.Parser.Desugar
+import FunLang.Parser.Symbols
 
 main = do
 --    args <- getArgs
@@ -20,6 +21,6 @@ main = do
                         print err
                     Right x -> do
                         print x
-                        print (desugar x)
+                        print (desugar (SymbolTable [] []) x)
                 loop
 
