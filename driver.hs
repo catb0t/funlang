@@ -10,14 +10,20 @@ import FunLang.Parser.Symbols
 import FunLang.Interpreter.Interpreter
 import FunLang.Interpreter.Values
 
-add_fun ((IntegerValue x):(IntegerValue y):[]) = IntegerValue (x+y)
-add_fun _ = error "Invalid parameters for add"
 
-neg_fun ((IntegerValue x):[]) = IntegerValue (-x)
-neg_fun _ = error "Invalid parameters for add"
+binary_fun op ((IntegerValue x):(IntegerValue y):[]) = IntegerValue (op x y)
+binary_fun _ args = error ("Invalid parameters for binary function" ++ show args)
+
+unary_fun op ((IntegerValue x):[]) = IntegerValue (op x)
+unary_fun _ args = error ("Invalid parameters for unary function: " ++ show args)
+
+add_fun = binary_fun (+)
+mul_fun = binary_fun (*)
+neg_fun = unary_fun (\x -> -x)
 
 builtins = Map.fromList [
     ("+", FunctionValue (BuiltInFunction 2 add_fun)),
+    ("*", FunctionValue (BuiltInFunction 2 mul_fun)),
     ("add", FunctionValue (BuiltInFunction 2 add_fun)),
     ("neg", FunctionValue (BuiltInFunction 1 neg_fun))
     ]
