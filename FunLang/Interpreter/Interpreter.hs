@@ -20,18 +20,20 @@ applicate' (BuiltInFunction ar builtin) args =
         else builtin args
 applicate' (PartialApplication fun largs) rargs = applicate' fun (largs ++ rargs)
 
+
 applicate :: Function -> Value -> Value
-applicate (PartialApplication fun args) arg = 
+applicate (PartialApplication fun partargs) arg = 
     if arity fun == length args
         then applicate' fun args
         else FunctionValue (PartialApplication fun args)
     where
-    args = args ++ [arg]
+    args = partargs ++ [arg]
 
 applicate fun arg = 
     if arity fun == 1
         then applicate' fun [arg]
         else FunctionValue (PartialApplication fun [arg])
+
 
 evaluate :: [Frame] -> Desugared -> Value
 evaluate frames (Application children) =
