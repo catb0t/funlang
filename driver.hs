@@ -1,9 +1,22 @@
 module Main where
 
+import qualified Data.Map as Map
+
 import Text.Parsec
 import FunLang.Parser.Parser
 import FunLang.Parser.Desugar
 import FunLang.Parser.Symbols
+import FunLang.Interpreter.Interpreter
+import FunLang.Interpreter.Values
+
+add_fun ((IntegerValue x):(IntegerValue y):[]) = IntegerValue (x+y)
+add_fun _ = error "Invalid parameters for add"
+
+builtins = Map.fromList [
+    ("0", IntegerValue 0),
+    ("1", IntegerValue 1),
+    ("+", FunctionValue (BuiltInFunction 2 add_fun))
+    ]
 
 main = do
 --    args <- getArgs
@@ -19,8 +32,11 @@ main = do
                     Left err -> do
                         putStrLn "Error at "
                         print err
-                    Right x -> do
-                        print x
-                        print (desugar (SymbolTable [] []) x)
+                    Right ast -> do
+                        print ast
+                        let dsg = desugar (SymbolTable [] []) ast
+                        print dsg
+                        let value = evaluate [builtins] dsg
+                        print value
                 loop
 
