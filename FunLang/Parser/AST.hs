@@ -1,15 +1,14 @@
 module FunLang.Parser.AST where
 
 type Identifier = String
-type Operator = String
 
 data Expression = 
-    InfixExpr Expression [(Operator, Expression)]
+    InfixExpr Expression [(Identifier, Expression)]
     | ApplicationExpr [Expression]
-    | PrefixExpr Operator Expression 
+    | PrefixExpr Identifier Expression 
     | ConditionExpr [(Expression, Expression)] Expression
     | LetExpr [(Identifier, Expression)] Expression
     | LambdaExpr [Identifier] Expression
-    | IdExpr String
+    | IdExpr Identifier
     deriving Show
 

@@ -20,7 +20,7 @@ infix_operators =
     getName op@(InfixOp name _ _) = (name,op)
 
 data Desugared =
-    Application Desugared [Desugared]
+    Application [Desugared]
     | Lambda [Identifier] Desugared
     | Conditional [(Desugared, Desugared)] Desugared
     | Id Identifier
@@ -46,7 +46,7 @@ desugar (InfixExpr first rest) =
     popAll yard = popAll (pop yard)
     
     pop (((InfixOp opName _ _):bottom), (l:r:queue)) =
-        let application = (Application (Id opName) [r, l])
+        let application = (Application [(Id opName), r, l])
         in (bottom, application:queue)
     pop (stack, queue) = error ("Cannot pop (" ++ show stack ++ ", " ++ show queue ++ ")")
    
@@ -65,10 +65,10 @@ desugar (InfixExpr first rest) =
 
     yard = ([],[desugar first]) :: ([InfixOperator],[Desugared])
 
-desugar (ApplicationExpr (fun:args)) =
-    Application (desugar fun) (map desugar args)
+desugar (ApplicationExpr children) =
+    Application (map desugar children)
 
-desugar (PrefixExpr op expr) = Application (Id op) [(desugar expr)]
+desugar (PrefixExpr op expr) = Application [(Id op), (desugar expr)]
 
 desugar (ConditionExpr conds alternative) =
     Conditional conds' (desugar alternative)
@@ -77,7 +77,7 @@ desugar (ConditionExpr conds alternative) =
     dsg (a,b) = (desugar a, desugar b)
     
 desugar (LetExpr bindings expr) =
-    Application (Lambda args body) values
+    Application ((Lambda args body):values)
     where
     args = map fst bindings
     body = desugar expr
