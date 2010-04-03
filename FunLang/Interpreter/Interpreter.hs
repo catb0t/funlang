@@ -2,7 +2,7 @@ module FunLang.Interpreter.Interpreter where
 
 import qualified Data.Map as Map
 
-import FunLang.Parser.Desugar
+import FunLang.Intermediate.Desugared
 import FunLang.Interpreter.Values
 
 applicate' :: Function -> [Value] -> Value

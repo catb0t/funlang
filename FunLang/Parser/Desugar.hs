@@ -4,14 +4,7 @@ import qualified Data.Map as Map
 
 import FunLang.Parser.AST
 import FunLang.Parser.Infix
-
-data Desugared =
-    Application [Desugared]
-    | Lambda [Identifier] Desugared
-    | Conditional [(Desugared, Desugared)] Desugared
-    | Constant Integer
-    | Id Identifier
-    deriving (Show,Eq)
+import FunLang.Intermediate.Desugared
 
 desugar symbols (InfixExpr first []) = desugar symbols first
 desugar symbols (InfixExpr first rest) =

@@ -2,8 +2,7 @@ module FunLang.Interpreter.Values where
 
 import qualified Data.Map as Map
 
-import FunLang.Parser.Desugar
-import FunLang.Parser.AST (Identifier)
+import FunLang.Intermediate.Desugared
 
 data Function =
     ClosureFunction [Frame] [Identifier] Desugared
