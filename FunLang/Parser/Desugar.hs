@@ -5,6 +5,7 @@ import qualified Data.Map as Map
 import FunLang.Parser.AST
 import FunLang.Parser.Infix
 import FunLang.Intermediate.Desugared
+import FunLang.Intermediate.LetRec (letrec)
 
 desugar symbols (InfixExpr first []) = desugar symbols first
 desugar symbols (InfixExpr first rest) =
@@ -31,11 +32,11 @@ desugar symbols (ConditionExpr conds alternative) =
     dsg (a,b) = (desugar symbols a, desugar symbols b)
     
 desugar symbols (LetExpr bindings expr) =
-    Application ((Lambda args body):values)
+    letrec (zip args values) body
     where
     args = map fst bindings
-    body = desugar symbols expr
     values = map (desugar symbols . snd) bindings
+    body = desugar symbols expr
         
 desugar symbols (LambdaExpr args expr) = Lambda args (desugar symbols expr)
 

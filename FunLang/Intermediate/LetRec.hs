@@ -43,3 +43,32 @@ scopes depmap =
         alter Nothing = Just [identifier]
         alter (Just list) = Just (identifier : list)
 
+simplelet :: [(Identifier, Desugared)] -> Desugared -> Desugared
+simplelet [] body = body
+simplelet decls body =
+    Application ((Lambda args body):values)
+    where
+    (args,values) = unzip decls
+
+recursivelet :: Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
+recursivelet recursive defs body =
+    if Map.null recursive then body
+    else foldl scopify body scopelist
+    where
+    scopelist = scopes (depends recursive)
+    scopify body (deps, ids) = body
+--        decls = [(identifier, def) | (identifier, Just def) <- (map (\x -> (x, Map.lookup x defs)))]
+--        substitutions = Map.fromList [(id, Application ((Id id):map Id deps)) | id <- ids]
+--        Just def = Map.lookup id defs
+--        def' = alphaSubstitute (id, Application ((Id id):map Id deps))
+
+letrec :: [(Identifier, Desugared)] -> Desugared -> Desugared
+letrec [] body = body
+letrec decls body =
+    recursivelet recursive recDef (simplelet simple body)
+    where
+    recursive = recursiveDecls decls
+    recSet = Map.keysSet recursive
+    simple = [(identifier, def) | (identifier, def) <- decls, not (Set.member identifier recSet)] -- TODO: this probably doesnt work
+    recDef = Map.fromList [(identifier, def) | (identifier, def) <- decls, (Set.member identifier recSet)]
+
