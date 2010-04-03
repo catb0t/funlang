@@ -6,6 +6,11 @@ let
         (lambda even odd: even even odd x)
         (lambda ev od n: if n then (od ev od (n+neg 1)) else 1)
         (lambda ev od n: if n then (ev ev od (n+neg 1)) else 0)
+    ,
+    isOdd x =
+        (lambda even odd: odd even odd x)
+        (lambda ev od n: if n then (od ev od (n + neg 1)) else 1)
+        (lambda ev od n: if n then (ev ev od (n + neg 1)) else 0)
     in
-    isEven 12
+    isEven 12 + isOdd 12
 
