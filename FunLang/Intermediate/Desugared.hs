@@ -38,8 +38,9 @@ alphaSubstitute' ids node@(Id identifier) =
         Nothing -> node
 
 alphaSubstitute' ids (Lambda identifiers body) =
-    alphaSubstitute ids' body
+    Lambda identifiers body'
     where
+    body' = alphaSubstitute ids' body
     ids' = Map.difference ids (Map.fromList (map (\x -> (x, Id x)) identifiers))
 
 alphaSubstitute' ids (Conditional conds alt) =

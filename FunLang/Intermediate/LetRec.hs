@@ -3,6 +3,7 @@ module FunLang.Intermediate.LetRec where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import Data.Maybe
 
 import FunLang.Intermediate.Desugared
 
@@ -24,8 +25,8 @@ recursiveDecls decls =
     where
     locals = map fst decls
     localset = Set.fromList locals
-    freeVars = map (freeVariables . snd) decls
-    recurse = [(identifier, free) | (identifier, free) <- zip locals freeVars, not (Set.null (Set.intersection localset free))]
+    freeVars = map (Set.intersection localset . freeVariables . snd) decls
+    recurse = [(identifier, free) | (identifier, free) <- zip locals freeVars, not (Set.null free)]
 
 depends :: Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier (Set.Set Identifier)
 depends recurse = Map.map (closure recurse) recurse
@@ -51,24 +52,60 @@ simplelet decls body =
     (args,values) = unzip decls
 
 recursivelet :: Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
-recursivelet recursive defs body =
+recursivelet recursive definitions body =
     if Map.null recursive then body
-    else foldl scopify body scopelist
+    else recursivelet' Set.empty scopelist body
     where
-    scopelist = scopes (depends recursive)
-    scopify body (deps, ids) = body
---        decls = [(identifier, def) | (identifier, Just def) <- (map (\x -> (x, Map.lookup x defs)))]
---        substitutions = Map.fromList [(id, Application ((Id id):map Id deps)) | id <- ids]
---        Just def = Map.lookup id defs
---        def' = alphaSubstitute (id, Application ((Id id):map Id deps))
+    dependencies = depends recursive
+    scopelist = scopes dependencies
+    recursivelet' :: Set.Set Identifier -> [([Identifier],[Identifier])] -> Desugared -> Desugared 
+    recursivelet' _ [] body = body
+    recursivelet' defined ((scope,decls):rest) body =
+        Application (Lambda (map fst rewrites) wrapper : map snd rewrites)
+        where
+        locals :: [Identifier]
+        locals = [x | x <- scope, not (Set.member x defined)]
+        localset = Set.fromList locals
+        body' = recursivelet' (Set.union defined localset) rest body
+--        wrapper = Lambda locals (Application (body':selectors))
+        wrapper = Application (Lambda locals body' : selectors)
+        localDeps dec =
+            filter (\x -> Set.member x deps) locals
+            where 
+            deps = fromJust (Map.lookup dec dependencies)
+        
+        (selectors, rewrites) =
+            (sel, rewrite (catMaybes maybedefs))
+            where
+            rewrite :: [(Identifier, [Identifier], Desugared)] -> [(Identifier, Desugared)]
+            rewrite list =
+                map (\(identifier, dep, def) -> (identifier, Lambda dep (substitute def))) list
+                where
+                (rews,deps,defs) = unzip3 list
+                apps = [Application ((Id decl):map Id dep) | (decl, dep) <- zip rews deps]
+                substitutions = Map.fromList (zip rews apps)
+                substitute = alphaSubstitute substitutions
+
+            (sel, maybedefs) = unzip $ map select decls
+            select decl = 
+                let def = fromJust (Map.lookup decl definitions)
+                in case localDeps decl of
+                    [] -> (def , Nothing)
+                    deps ->
+                        (app, Just (decl, deps, def)) 
+                        where
+                        app = Application (Id decl:map Id deps)
+
 
 letrec :: [(Identifier, Desugared)] -> Desugared -> Desugared
 letrec [] body = body
 letrec decls body =
-    recursivelet recursive recDef (simplelet simple body)
+    recursivelet recursive recDef body' 
     where
+    body' = simplelet simple body
     recursive = recursiveDecls decls
     recSet = Map.keysSet recursive
-    simple = [(identifier, def) | (identifier, def) <- decls, not (Set.member identifier recSet)] -- TODO: this probably doesnt work
+    notsimple = Set.unions (Map.elems recursive)
+    simple = [(identifier, def) | (identifier, def) <- decls, not (Set.member identifier notsimple)]
     recDef = Map.fromList [(identifier, def) | (identifier, def) <- decls, (Set.member identifier recSet)]
 
