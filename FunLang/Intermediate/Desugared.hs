@@ -96,3 +96,17 @@ alphaSubstitute' ids (Application children org) =
 
 alphaSubstitute' ids node = node
 
+
+betaReduce :: Map.Map Identifier Desugared -> Desugared -> Desugared
+betaReduce subs node@(Lambda identifiers body org) = 
+    if Map.null subs
+    then node
+    else
+        if null ids' then body'
+        else Lambda ids' body' (Synthetic "Beta reduce" [org])
+    where
+    ids' = [identifier | identifier <- identifiers, Map.notMember identifier subs]
+    body' = alphaSubstitute subs body
+    
+betaReduce _ _ = error "Cannot beta-reduce non-lambda nodes"
+

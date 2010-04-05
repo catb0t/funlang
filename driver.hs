@@ -8,6 +8,7 @@ import FunLang.Parser.Parser
 import FunLang.Parser.Desugar
 import FunLang.Interpreter.Interpreter
 import FunLang.Interpreter.Values
+import FunLang.Intermediate.SimpleRewrite
 import qualified FunLang.Parser.Pretty as PrettyAST
 import qualified FunLang.Intermediate.Pretty as PrettyDsg
 import qualified FunLang.Interpreter.Pretty as PrettyValue
@@ -33,10 +34,16 @@ output (Left err) = do
     putStrLn "Error at "
     print err
 output (Right ast) = do
+    putStrLn "===== AST ====="
     putStrLn (PrettyAST.pprint ast)
+    putStrLn "===== Desugared ====="
     let dsg = desugar () ast
     putStrLn (PrettyDsg.pprint dsg)
-    let value = evaluate [builtins] dsg
+    putStrLn "===== Rewritten ====="
+    let rew = rewrite dsg
+    putStrLn (PrettyDsg.pprint rew)
+    putStrLn "===== Evaluated ====="
+    let value = evaluate [builtins] rew
     putStrLn (PrettyValue.pprint value)
 
 repl = do
