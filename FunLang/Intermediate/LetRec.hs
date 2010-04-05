@@ -47,7 +47,7 @@ scopes depmap =
 simplelet :: [(Identifier, Desugared)] -> Desugared -> Desugared
 simplelet [] body = body
 simplelet decls body =
-    Application ((Lambda args body):values)
+    Application ((Lambda args body (Synthetic "Simple Let body" [])):values) (Synthetic "Simple Let application" [])
     where
     (args,values) = unzip decls
 
@@ -61,14 +61,14 @@ recursivelet recursive definitions body =
     recursivelet' :: Set.Set Identifier -> [([Identifier],[Identifier])] -> Desugared -> Desugared 
     recursivelet' _ [] body = body
     recursivelet' defined ((scope,decls):rest) body =
-        Application (Lambda (map fst rewrites) wrapper : map snd rewrites)
+        Application (Lambda (map fst rewrites) wrapper (Synthetic "Recursive Let scope" []): map snd rewrites) (Synthetic "Recursive Let application" [])
         where
         locals :: [Identifier]
         locals = [x | x <- scope, not (Set.member x defined)]
         localset = Set.fromList locals
         body' = recursivelet' (Set.union defined localset) rest body
 --        wrapper = Lambda locals (Application (body':selectors))
-        wrapper = Application (Lambda locals body' : selectors)
+        wrapper = Application (Lambda locals body' (Synthetic "Recursive let body" []) : selectors) (Synthetic "Recursive Let body application" [])
         localDeps dec =
             filter (\x -> Set.member x deps) locals
             where 
@@ -79,10 +79,12 @@ recursivelet recursive definitions body =
             where
             rewrite :: [(Identifier, [Identifier], Desugared)] -> [(Identifier, Desugared)]
             rewrite list =
-                map (\(identifier, dep, def) -> (identifier, Lambda dep (substitute def))) list
+                map (\(identifier, dep, def) ->
+                    (identifier, Lambda dep (substitute def) (Synthetic "Recursive Let rewrite" []))) list
                 where
                 (rews,deps,defs) = unzip3 list
-                apps = [Application ((Id decl):map Id dep) | (decl, dep) <- zip rews deps]
+                synId = Synthetic "Recursive Let id" []
+                apps = [Application ((Id decl synId):map (\d -> Id d synId) dep) (Synthetic "Recursive Let rewrite selector" []) | (decl, dep) <- zip rews deps]
                 substitutions = Map.fromList (zip rews apps)
                 substitute = alphaSubstitute substitutions
 
@@ -94,7 +96,8 @@ recursivelet recursive definitions body =
                     deps ->
                         (app, Just (decl, deps, def)) 
                         where
-                        app = Application (Id decl:map Id deps)
+                        synId = Synthetic "Recursive Let selector id" []
+                        app = Application ((Id decl synId):map (\d -> Id d synId) deps) (Synthetic "Recursive Let selector" [])
 
 
 letrec :: [(Identifier, Desugared)] -> Desugared -> Desugared

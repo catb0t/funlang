@@ -36,17 +36,17 @@ applicate fun arg =
 
 
 evaluate :: [Frame] -> Desugared -> Value
-evaluate frames (Application children) =
+evaluate frames (Application children origin) =
     foldl apply_value fun args
     where
     (fun:args) = map (evaluate frames) children
     apply_value (FunctionValue function) arg = applicate function arg
     apply_value _ _ = error ("Cannot apply, left side not a function")
     
-evaluate frames (Lambda identifiers body) =
+evaluate frames (Lambda identifiers body origin) =
     FunctionValue (ClosureFunction frames identifiers body)
     
-evaluate frames (Conditional conds alternative) = 
+evaluate frames (Conditional conds alternative origin) = 
     eval_cond conds alternative
     where
     eval_cond [] alt = evaluate frames alt
@@ -58,9 +58,9 @@ evaluate frames (Conditional conds alternative) =
                     else eval_cond rest alt
             _ -> error "Wrong type in condition"
 
-evaluate frames (Constant value) = IntegerValue value
+evaluate frames (Constant value origin) = IntegerValue value
     
-evaluate frames (Id identifier) =
+evaluate frames (Id identifier origin) =
     case (lookupValue frames identifier) of
         Just value -> value
         Nothing -> error ("Unknown identifier: " ++ show identifier)
