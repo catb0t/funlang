@@ -32,12 +32,41 @@ children (Conditional conds alt _) = (alt : foldl (\list (a,b) -> (a:b:list)) []
 children _ = []
 
 freeVariables :: Desugared -> (Set.Set Identifier)
-freeVariables (Lambda identifiers body _) =
-    Set.difference (freeVariables body) (Set.fromList identifiers)
-    
-freeVariables (Id x _) = Set.singleton x
+freeVariables = Map.keysSet . countFree' Set.empty
 
-freeVariables node = Set.unions . map freeVariables $ children node
+countFree :: Desugared -> Map.Map Identifier Int
+countFree = countFree' Set.empty
+
+countFree' :: Set.Set Identifier -> Desugared -> Map.Map Identifier Int
+countFree' bound (Lambda identifiers body _) =
+    countFree' (Set.union bound (Set.fromList identifiers)) body
+    
+countFree' bound (Id x _) =
+    if Set.member x bound
+    then Map.empty
+    else Map.singleton x 1
+
+countFree' bound node =
+    Map.unionsWith (+) . map (countFree' bound) $ children node
+
+
+countOccurences :: [Identifier] -> Desugared  -> Map.Map Identifier Int
+countOccurences identifiers = countOccurences' (Map.fromList $ zip identifiers [0,0..]) Set.empty
+
+countOccurences' :: Map.Map Identifier Int -> Set.Set Identifier -> Desugared -> Map.Map Identifier Int
+countOccurences' count bound (Lambda identifiers body _) =
+    countOccurences' count (Set.union bound (Set.fromList identifiers)) body
+    
+countOccurences' count bound (Id x _) =
+    if Set.member x bound
+    then count
+    else Map.adjust (+1) x count
+
+countOccurences' count bound node =
+    Map.unionWith (+) count childcount
+    where
+    childcount = Map.unionsWith (+) . map (countOccurences' zeros bound) $ children node
+    zeros = Map.fromList [(identifier, 0) | identifier <- Map.keys count, Set.notMember identifier bound]
 
 
 alphaSubstitute :: Map.Map Identifier Desugared -> Desugared -> Desugared
