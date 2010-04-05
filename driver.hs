@@ -6,7 +6,6 @@ import System.Environment (getArgs)
 import Text.Parsec
 import FunLang.Parser.Parser
 import FunLang.Parser.Desugar
-import FunLang.Parser.Symbols
 import FunLang.Interpreter.Interpreter
 import FunLang.Interpreter.Values
 import qualified FunLang.Parser.Pretty as PrettyAST
@@ -35,7 +34,7 @@ output (Left err) = do
     print err
 output (Right ast) = do
     putStrLn (PrettyAST.pprint ast)
-    let dsg = desugar (SymbolTable [] []) ast
+    let dsg = desugar () ast
     putStrLn (PrettyDsg.pprint dsg)
     let value = evaluate [builtins] dsg
     putStrLn (PrettyValue.pprint value)
