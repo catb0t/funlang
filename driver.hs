@@ -9,7 +9,9 @@ import FunLang.Parser.Desugar
 import FunLang.Parser.Symbols
 import FunLang.Interpreter.Interpreter
 import FunLang.Interpreter.Values
-
+import qualified FunLang.Parser.Pretty as PrettyAST
+import qualified FunLang.Intermediate.Pretty as PrettyDsg
+import qualified FunLang.Interpreter.Pretty as PrettyValue
 
 binary_fun op ((IntegerValue x):(IntegerValue y):[]) = IntegerValue (op x y)
 binary_fun _ args = error ("Invalid parameters for binary function" ++ show args)
@@ -32,11 +34,11 @@ output (Left err) = do
     putStrLn "Error at "
     print err
 output (Right ast) = do
-    print ast
+    putStrLn (PrettyAST.pprint ast)
     let dsg = desugar (SymbolTable [] []) ast
-    print dsg
+    putStrLn (PrettyDsg.pprint dsg)
     let value = evaluate [builtins] dsg
-    print value
+    putStrLn (PrettyValue.pprint value)
 
 repl = do
     line <- getLine
