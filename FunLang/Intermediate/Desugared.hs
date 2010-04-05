@@ -17,6 +17,13 @@ data Desugared =
     | Constant Integer Origin
     | Id Identifier Origin
     deriving (Show,Eq)
+    
+origin :: Desugared -> Origin
+origin (Application _ org) = org
+origin (Lambda _ _ org) = org
+origin (Conditional _ _ org) = org
+origin (Constant _ org) = org
+origin (Id _ org) = org
 
 children :: Desugared -> [Desugared]
 children (Application cs _) = cs
@@ -42,21 +49,21 @@ alphaSubstitute' ids node@(Id identifier _) =
         Just rewrite -> rewrite
         Nothing -> node
 
-alphaSubstitute' ids (Lambda identifiers body origin) =
-    Lambda identifiers body' origin
+alphaSubstitute' ids (Lambda identifiers body org) =
+    Lambda identifiers body' (Synthetic "Alpha substitute" [org])
     where
     body' = alphaSubstitute ids' body
     ids' = Map.difference ids (Map.fromList (map (\x -> (x, Id x)) identifiers))
 
-alphaSubstitute' ids (Conditional conds alt origin) =
-    Conditional conds' alt' origin
+alphaSubstitute' ids (Conditional conds alt org) =
+    Conditional conds' alt' (Synthetic "Alpha substitute" [org])
     where
     alt' = alphaSubstitute' ids alt
     conds' = map substitutePair conds
     substitutePair (a,b) = (alphaSubstitute' ids a, alphaSubstitute' ids b)
     
-alphaSubstitute' ids (Application children origin) =
-    Application (map (alphaSubstitute' ids) children) origin
+alphaSubstitute' ids (Application children org) =
+    Application (map (alphaSubstitute' ids) children) (Synthetic "Alpha substitute" [org])
 
 alphaSubstitute' ids node = node
 

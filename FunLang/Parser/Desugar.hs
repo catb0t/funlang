@@ -34,7 +34,7 @@ desugar symbols (ConditionExpr conds alternative pos) =
     dsg (a,b) = (desugar symbols a, desugar symbols b)
     
 desugar symbols (LetExpr bindings expr pos) =
-    letrec (zip args values) body
+    letrec (Source pos) (zip args values) body
     where
     args = map (fst . fst) bindings
     values = map (desugar symbols . snd) bindings

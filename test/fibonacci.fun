@@ -1,14 +1,17 @@
-{-
+let
     fibonacci x =
         if x 
         then
             if x + neg 1 then fibonacci (x + neg 1) + fibonacci (x + neg 2) else 1
         else 0
-
+    ,
     fibonacci_iter x =
         let iter n a b = if n then iter (n + neg 1) b (a+b) else a
         in iter x 0 1
--}
+in
+    fibonacci 7 + fibonacci_iter 8
+
+{-
 
 let
     fibonacci x =
@@ -25,4 +28,5 @@ let
 in
     fibonacci 7 + fibonacci_iter 8
 
+-}
 

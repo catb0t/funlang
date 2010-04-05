@@ -43,17 +43,17 @@ scopes depmap =
         alter Nothing = Just [identifier]
         alter (Just list) = Just (identifier : list)
 
-simplelet :: [(Identifier, Desugared)] -> Desugared -> Desugared
-simplelet [] body = body
-simplelet decls body =
-    Application (body':values) (Synthetic "Simple Let application" [])
+simplelet :: Origin -> [(Identifier, Desugared)] -> Desugared -> Desugared
+simplelet _ [] body = body
+simplelet org decls body =
+    Application (body':values) (Synthetic "Simple Let application" [org])
     where
     (args,values) = unzip decls
-    body' = (Lambda args body (Synthetic "Simple Let body" []))
+    body' = (Lambda args body (Synthetic "Simple Let body" [origin body]))
 
 
-letselect1 :: [Identifier] -> Set.Set Identifier -> Set.Set Identifier -> Desugared -> Identifier -> (Desugared, Maybe (Identifier,[Identifier],Desugared,Desugared))
-letselect1 locals declset dependencies definition decl =
+letselect1 :: Origin -> [Identifier] -> Set.Set Identifier -> Set.Set Identifier -> Desugared -> Identifier -> (Desugared, Maybe (Identifier,[Identifier],Desugared,Desugared))
+letselect1 org locals declset dependencies definition decl =
     if null localdeps then  (definition, Nothing)
     else
         let sel = selector localdeps
@@ -64,53 +64,53 @@ letselect1 locals declset dependencies definition decl =
         Application (
             (Id decl (Synthetic "Let selector function" [])) :
             [Id x (Synthetic "Let selector parameter" []) | x <- deps] )
-                (Synthetic "Let selector application" [])
+                (Synthetic "Let selector application" [origin definition])
 
-rewrite :: Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> (Desugared -> Desugared) -> Identifier -> Desugared
-rewrite definitions dependencies locals substitute local =
+rewrite :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> (Desugared -> Desugared) -> Identifier -> Desugared
+rewrite org definitions dependencies locals substitute local =
     case (Map.lookup local dependencies) of
         Nothing -> def
         Just deps ->
-            Lambda localdeps (substitute def) (Synthetic ("Rewritten Let definition for " ++ local) [])
+            Lambda localdeps (substitute def) (Synthetic ("Rewritten Let definition for " ++ local) [origin def])
             where
             localdeps = [loc | loc <- locals, Set.member loc deps]
     where
     def = fromJust (Map.lookup local definitions)
 
 
-letselect :: Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> [Identifier] -> ([Desugared],[Desugared])
-letselect definitions dependencies locals decls = 
+letselect :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> [Identifier] -> ([Desugared],[Desugared])
+letselect org definitions dependencies locals decls = 
     (selectors, rewrites)
     where
     (selectors, maybedefs) = unzip (map select decls)
     declset = Set.fromList decls
-    select decl = letselect1 locals declset (fromJust (Map.lookup decl dependencies)) (fromJust (Map.lookup decl definitions)) decl
+    select decl = letselect1 org locals declset (fromJust (Map.lookup decl dependencies)) (fromJust (Map.lookup decl definitions)) decl
     defs = catMaybes maybedefs
     substitutions = Map.fromList [(decl, selector) | (decl, _, _, selector) <- defs]
-    rewrites = map (rewrite definitions dependencies locals substitute) locals
+    rewrites = map (rewrite org definitions dependencies locals substitute) locals
     substitute def = alphaSubstitute substitutions def
 
-letscope :: Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> Desugared -> ([Identifier],[Identifier]) -> Desugared
-letscope _ _ body (_, []) = body
+letscope :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> Desugared -> ([Identifier],[Identifier]) -> Desugared
+letscope _ _ _ body (_, []) = body
 
-letscope definitions _ body ([], decls) =
-    simplelet [(decl, fromJust (Map.lookup decl definitions)) | decl <- decls] body
+letscope org definitions _ body ([], decls) =
+    simplelet org [(decl, fromJust (Map.lookup decl definitions)) | decl <- decls] body
     
-letscope definitions dependencies body (locals, decls) = 
+letscope org definitions dependencies body (locals, decls) = 
     wrapped
     where
-    wrapped = Application (wrapper : rewrites) (Synthetic "Recursive Let scope application" [])
+    wrapped = Application (wrapper : rewrites) (Synthetic "Recursive Let scope application" [org])
     wrapper = Lambda locals body' (Synthetic "Recursive Let scope wrapper" [])
     body' = Application (scopebody:selectors) (Synthetic "Recursive Let body application" [])
-    scopebody = Lambda decls body (Synthetic "Recursive Let scope body" [])
-    (selectors, rewrites) = letselect definitions dependencies locals decls
+    scopebody = Lambda decls body (Synthetic "Recursive Let scope body" [org, origin body])
+    (selectors, rewrites) = letselect org definitions dependencies locals decls
 
-recursivelet :: Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
-recursivelet recursive definitions body =
+recursivelet :: Origin -> Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
+recursivelet org recursive definitions body =
     if Map.null recursive then body
     else foldl reduce body scopelocals
     where
-    reduce body (x,y) = letscope definitions dependencies body (x, y)
+    reduce body (x,y) = letscope org definitions dependencies body (x, y)
     dependencies = depends recursive
     scopelist = scopes dependencies
     (scopelocals, scopedefs) = foldl locals ([], Set.empty)  scopelist
@@ -119,12 +119,12 @@ recursivelet recursive definitions body =
         where
         loc = [decl | decl <- decls, Set.notMember decl defined]
 
-letrec :: [(Identifier, Desugared)] -> Desugared -> Desugared
-letrec [] body = body
-letrec decls body =
-    recursivelet recursive definitions body' 
+letrec :: Origin -> [(Identifier, Desugared)] -> Desugared -> Desugared
+letrec _ [] body = body
+letrec org decls body =
+    recursivelet org recursive definitions body' 
     where
-    body' = simplelet simple body
+    body' = simplelet org simple body
     recursive = recursiveDecls decls
     notsimple = Set.unions (Map.elems recursive)
     simple = [(identifier, def) | (identifier, def) <- decls, not (Set.member identifier notsimple)]
