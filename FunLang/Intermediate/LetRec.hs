@@ -7,7 +7,6 @@ import Data.Maybe
 
 import FunLang.Intermediate.Desugared
 
-
 closure :: Ord a => Map.Map a (Set.Set a) -> Set.Set a -> Set.Set a
 closure recurse set =
     closure' Set.empty set
@@ -53,14 +52,14 @@ simplelet decls body =
     body' = (Lambda args body (Synthetic "Simple Let body" []))
 
 
-letselect1 :: [Identifier] -> Set.Set Identifier -> Desugared -> Identifier -> (Desugared, Maybe (Identifier,[Identifier],Desugared,Desugared))
-letselect1 locals dependencies definition decl =
-    if null localdeps then (definition, Nothing)
+letselect1 :: [Identifier] -> Set.Set Identifier -> Set.Set Identifier -> Desugared -> Identifier -> (Desugared, Maybe (Identifier,[Identifier],Desugared,Desugared))
+letselect1 locals declset dependencies definition decl =
+    if null localdeps then  (definition, Nothing)
     else
         let sel = selector localdeps
         in (sel, Just (decl, localdeps, definition, sel))
     where
-    localdeps = [loc | loc <- locals, Set.member loc dependencies]
+    localdeps = [loc | loc <- locals, Set.member loc declset]
     selector deps =
         Application (
             (Id decl (Synthetic "Let selector function" [])) :
@@ -69,12 +68,14 @@ letselect1 locals dependencies definition decl =
 
 rewrite :: Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> (Desugared -> Desugared) -> Identifier -> Desugared
 rewrite definitions dependencies locals substitute local =
-    if null localdeps then def
-    else Lambda localdeps (substitute def) (Synthetic ("Rewritten Let definition for " ++ local) [])
+    case (Map.lookup local dependencies) of
+        Nothing -> def
+        Just deps ->
+            Lambda localdeps (substitute def) (Synthetic ("Rewritten Let definition for " ++ local) [])
+            where
+            localdeps = [loc | loc <- locals, Set.member loc deps]
     where
     def = fromJust (Map.lookup local definitions)
-    deps = fromJust (Map.lookup local dependencies)
-    localdeps = [loc | loc <- locals, Set.member loc deps]
 
 
 letselect :: Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> [Identifier] -> ([Desugared],[Desugared])
@@ -82,7 +83,8 @@ letselect definitions dependencies locals decls =
     (selectors, rewrites)
     where
     (selectors, maybedefs) = unzip (map select decls)
-    select decl = letselect1 locals (fromJust (Map.lookup decl dependencies)) (fromJust (Map.lookup decl definitions)) decl
+    declset = Set.fromList decls
+    select decl = letselect1 locals declset (fromJust (Map.lookup decl dependencies)) (fromJust (Map.lookup decl definitions)) decl
     defs = catMaybes maybedefs
     substitutions = Map.fromList [(decl, selector) | (decl, _, _, selector) <- defs]
     rewrites = map (rewrite definitions dependencies locals substitute) locals
@@ -101,18 +103,18 @@ letscope definitions dependencies body (locals, decls) =
     wrapper = Lambda locals body' (Synthetic "Recursive Let scope wrapper" [])
     body' = Application (scopebody:selectors) (Synthetic "Recursive Let body application" [])
     scopebody = Lambda decls body (Synthetic "Recursive Let scope body" [])
-
     (selectors, rewrites) = letselect definitions dependencies locals decls
 
 recursivelet :: Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
 recursivelet recursive definitions body =
     if Map.null recursive then body
-    else foldl (letscope definitions dependencies) body scopelocals
+    else foldl reduce body scopelocals
     where
+    reduce body (x,y) = letscope definitions dependencies body (x, y)
     dependencies = depends recursive
     scopelist = scopes dependencies
-    (scopelocals, scopedefs) = foldr locals ([], Set.empty)  scopelist
-    locals (decls, defs) (rest, defined) =
+    (scopelocals, scopedefs) = foldl locals ([], Set.empty)  scopelist
+    locals (rest, defined) (decls, defs) =
         ((loc,defs):rest, Set.union defined (Set.fromList (defs ++ decls)))
         where
         loc = [decl | decl <- decls, Set.notMember decl defined]
@@ -120,12 +122,11 @@ recursivelet recursive definitions body =
 letrec :: [(Identifier, Desugared)] -> Desugared -> Desugared
 letrec [] body = body
 letrec decls body =
-    recursivelet recursive recDef body' 
+    recursivelet recursive definitions body' 
     where
     body' = simplelet simple body
     recursive = recursiveDecls decls
-    recSet = Map.keysSet recursive
     notsimple = Set.unions (Map.elems recursive)
     simple = [(identifier, def) | (identifier, def) <- decls, not (Set.member identifier notsimple)]
-    recDef = Map.fromList [(identifier, def) | (identifier, def) <- decls, (Set.member identifier recSet)]
+    definitions = Map.fromList [(identifier, def) | (identifier, def) <- decls]
 
