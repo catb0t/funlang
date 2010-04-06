@@ -46,18 +46,14 @@ evaluate frames (Application children origin) =
 evaluate frames (Lambda identifiers body origin) =
     FunctionValue (ClosureFunction frames identifiers body)
     
-evaluate frames (Conditional conds alternative origin) = 
-    eval_cond conds alternative
-    where
-    eval_cond [] alt = evaluate frames alt
-    eval_cond ((cond,cons):rest) alt =
-        case (evaluate frames cond) of
-            IntegerValue x ->
-                if x /= 0
-                    then evaluate frames cons
-                    else eval_cond rest alt
-            _ -> error "Wrong type in condition"
-
+evaluate frames (Conditional cond cons alternative origin) = 
+    case (evaluate frames cond) of
+        (IntegerValue x) ->
+            if x /= 0
+            then evaluate frames cons
+            else evaluate frames alternative
+        _ -> error "Wrong type in condition"
+    
 evaluate frames (Constant value origin) = IntegerValue value
     
 evaluate frames (Id identifier origin) =

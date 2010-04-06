@@ -18,12 +18,11 @@ pretty (Lambda identifiers body origin) =
     text "Lambda" <+> prettyOrigin origin $$
         nest 2 (brackets (hsep (map text identifiers)) $$ pretty body)
 
-pretty (Conditional conds alt origin) =
+pretty (Conditional cond cons alt origin) =
     text "Conditional" <+> prettyOrigin origin $$
-        parens (brackets (nest 2 (vcat prettyconds)) $$ nest 2 (pretty alt))
+        parens (brackets (nest 2 prettycond) $$ nest 2 (pretty alt))
     where
-    prettyconds = map prettycond conds
-    prettycond (cond,cons) = parens (pretty cond $$ text "then" $$ pretty cons)
+    prettycond = parens (pretty cond $$ text "then" $$ pretty cons)
 pretty (Constant value origin) = text "Constant" <+> integer value <+> prettyOrigin origin
 pretty (Id identifier origin) = text "Id" <+> text identifier <+> prettyOrigin origin
 

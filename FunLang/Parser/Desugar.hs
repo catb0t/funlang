@@ -5,6 +5,7 @@ import qualified Data.Map as Map
 import FunLang.Parser.AST
 import FunLang.Parser.Infix
 import FunLang.Intermediate.Desugared
+import FunLang.Intermediate.Conditional
 import FunLang.Intermediate.LetRec (letrec)
 
 desugar :: () -> Expression -> Desugared
@@ -28,7 +29,7 @@ desugar symbols (PrefixExpr (op,oppos) expr pos) =
     Application [(Id op (Source oppos)), (desugar symbols expr)] (Source pos)
 
 desugar symbols (ConditionExpr conds alternative pos) =
-    Conditional conds' (desugar symbols alternative) (Source pos)
+    conditional conds' (desugar symbols alternative) (Source pos)
     where
     conds' = map dsg conds
     dsg (a,b) = (desugar symbols a, desugar symbols b)

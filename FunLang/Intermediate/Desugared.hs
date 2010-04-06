@@ -13,7 +13,7 @@ data Origin = Source SourcePos | Synthetic String [Origin]
 data Desugared =
     Application [Desugared] Origin
     | Lambda [Identifier] Desugared Origin
-    | Conditional [(Desugared, Desugared)] Desugared Origin
+    | Conditional Desugared Desugared Desugared Origin
     | Constant Integer Origin
     | Id Identifier Origin
     deriving (Show,Eq)
@@ -21,14 +21,14 @@ data Desugared =
 origin :: Desugared -> Origin
 origin (Application _ org) = org
 origin (Lambda _ _ org) = org
-origin (Conditional _ _ org) = org
+origin (Conditional _ _ _ org) = org
 origin (Constant _ org) = org
 origin (Id _ org) = org
 
 children :: Desugared -> [Desugared]
 children (Application cs _) = cs
 children (Lambda _ body _) = [body]
-children (Conditional conds alt _) = (alt : foldl (\list (a,b) -> (a:b:list)) [] conds)
+children (Conditional cond cons alt _) = [cond,cons,alt]
 children _ = []
 
 freeVariables :: Desugared -> (Set.Set Identifier)
@@ -84,18 +84,18 @@ alphaSubstitute' ids (Lambda identifiers body org) =
     body' = alphaSubstitute ids' body
     ids' = Map.difference ids (Map.fromList (map (\x -> (x, Id x)) identifiers))
 
-alphaSubstitute' ids (Conditional conds alt org) =
-    Conditional conds' alt' (Synthetic "Alpha substitute" [org])
+alphaSubstitute' ids (Conditional cond cons alt org) =
+    Conditional cond' cons' alt' (Synthetic "Alpha substitute" [org])
     where
-    alt' = alphaSubstitute' ids alt
-    conds' = map substitutePair conds
-    substitutePair (a,b) = (alphaSubstitute' ids a, alphaSubstitute' ids b)
+    sub = alphaSubstitute' ids
+    cond' = sub cond
+    cons' = sub cons
+    alt' = sub alt
     
 alphaSubstitute' ids (Application children org) =
     Application (map (alphaSubstitute' ids) children) (Synthetic "Alpha substitute" [org])
 
 alphaSubstitute' ids node = node
-
 
 betaReduce :: Map.Map Identifier Desugared -> Desugared -> Desugared
 betaReduce subs node@(Lambda identifiers body org) = 
@@ -107,6 +107,7 @@ betaReduce subs node@(Lambda identifiers body org) =
     where
     ids' = [identifier | identifier <- identifiers, Map.notMember identifier subs]
     body' = alphaSubstitute subs body
+    
     
 betaReduce _ _ = error "Cannot beta-reduce non-lambda nodes"
 
