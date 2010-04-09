@@ -56,9 +56,9 @@ output (Right ast) = do
     putStrLn "===== Desugared ====="
     let dsg = desugar [globalscope] ast
     putStrLn (PrettyDsg.pprint dsg)
---    putStrLn "===== Rewritten ====="
-    let rew = dsg -- rewrite dsg
---    putStrLn (PrettyDsg.pprint rew)
+    putStrLn "===== Rewritten ====="
+    let rew = rewrite dsg
+    putStrLn (PrettyDsg.pprint rew)
     putStrLn "===== Evaluated ====="
     let value = evaluate [builtins] rew
     putStrLn (PrettyValue.pprint value)

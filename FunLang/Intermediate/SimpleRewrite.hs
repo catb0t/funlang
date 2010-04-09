@@ -8,14 +8,15 @@ import FunLang.Intermediate.Reductions
 
 rewrite :: Desugared -> Desugared
 rewrite (Application (child:[]) _) = rewrite child
+
 rewrite (Application ((Application largs lorg):rargs) rorg) =
     rewrite $ Application args' (Synthetic "Nested applications" [lorg, rorg])
     where
     args' = (largs ++ rargs)
 
-rewrite (Application args@(lambda@(Lambda identifiers body _):rest) org) =
+rewrite (Application list@(lambda@(Lambda identifiers body _):rest) org) =
     if Map.null subs
-    then Application (map rewrite args) org
+    then Application (map rewrite list) org
     else rewrite $ 
         if null rest'
         then applied
