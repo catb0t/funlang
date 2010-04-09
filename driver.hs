@@ -24,12 +24,14 @@ unary_fun _ args = error ("Invalid parameters for unary function: " ++ show args
 add_fun = binary_fun (+)
 sub_fun = binary_fun (-)
 mul_fun = binary_fun (*)
+div_fun = binary_fun div
 neg_fun = unary_fun (\x -> -x)
 
 builtins = Map.fromList [
     ("+infix", FunctionValue (BuiltInFunction 2 add_fun)),
     ("-infix", FunctionValue (BuiltInFunction 2 sub_fun)),
     ("*infix", FunctionValue (BuiltInFunction 2 mul_fun)),
+    ("/infix", FunctionValue (BuiltInFunction 2 div_fun)),
     ("add", FunctionValue (BuiltInFunction 2 add_fun)),
     ("neg", FunctionValue (BuiltInFunction 1 neg_fun)),
     ("-prefix", FunctionValue (BuiltInFunction 1 neg_fun))
@@ -38,7 +40,8 @@ builtins = Map.fromList [
 infix_operators = Map.fromList [
     ("+", InfixOp Associative 2),
     ("-", InfixOp Associative 2),
-    ("*", InfixOp Associative 1)
+    ("*", InfixOp Associative 1),
+    ("/", InfixOp Associative 1)
     ]
 
 prefix_operators = Map.fromList [
