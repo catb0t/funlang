@@ -6,6 +6,7 @@ import qualified Data.List as List
 import Data.Maybe
 
 import FunLang.Intermediate.Desugared
+import FunLang.Intermediate.Reductions
 
 closure :: Ord a => Map.Map a (Set.Set a) -> Set.Set a -> Set.Set a
 closure recurse set =

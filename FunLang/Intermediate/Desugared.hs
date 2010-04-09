@@ -69,45 +69,4 @@ countOccurences' count bound node =
     zeros = Map.fromList [(identifier, 0) | identifier <- Map.keys count, Set.notMember identifier bound]
 
 
-alphaSubstitute :: Map.Map Identifier Desugared -> Desugared -> Desugared
-alphaSubstitute ids node =
-    if Map.null ids then node else alphaSubstitute' ids node
-
-alphaSubstitute' ids node@(Id identifier _) = 
-    case (Map.lookup identifier ids) of
-        Just rewrite -> rewrite
-        Nothing -> node
-
-alphaSubstitute' ids (Lambda identifiers body org) =
-    Lambda identifiers body' (Synthetic "Alpha substitute" [org])
-    where
-    body' = alphaSubstitute ids' body
-    ids' = Map.difference ids (Map.fromList (map (\x -> (x, Id x)) identifiers))
-
-alphaSubstitute' ids (Conditional cond cons alt org) =
-    Conditional cond' cons' alt' (Synthetic "Alpha substitute" [org])
-    where
-    sub = alphaSubstitute' ids
-    cond' = sub cond
-    cons' = sub cons
-    alt' = sub alt
-    
-alphaSubstitute' ids (Application children org) =
-    Application (map (alphaSubstitute' ids) children) (Synthetic "Alpha substitute" [org])
-
-alphaSubstitute' ids node = node
-
-betaReduce :: Map.Map Identifier Desugared -> Desugared -> Desugared
-betaReduce subs node@(Lambda identifiers body org) = 
-    if Map.null subs
-    then node
-    else
-        if null ids' then body'
-        else Lambda ids' body' (Synthetic "Beta reduce" [org])
-    where
-    ids' = [identifier | identifier <- identifiers, Map.notMember identifier subs]
-    body' = alphaSubstitute subs body
-    
-    
-betaReduce _ _ = error "Cannot beta-reduce non-lambda nodes"
 

@@ -4,6 +4,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 
 import FunLang.Intermediate.Desugared
+import FunLang.Intermediate.Reductions
 
 rewriteApplication app@(Application args org) = 
     if rewritten
@@ -22,8 +23,6 @@ rewrite node =
 
 rewrite' :: Desugared -> (Bool, Desugared)
 rewrite' (Application (child:[]) _) = (True, child)
-rewrite' (Application ((Application largs lorg):(Application rargs rorg):rest) org) =
-    rewrite' $ Application (largs ++ (rargs ++ rest)) (Synthetic "Combined applications" [org, lorg, rorg])
 rewrite' (Application ((Application largs lorg):rargs) rorg) =
     rewrite' $ Application (largs ++ rargs) (Synthetic "Nested applications" [lorg, rorg])
 
@@ -47,10 +46,18 @@ rewrite' node@(Application (lambda@(Lambda identifiers body _):rest) org) =
 
 rewrite' node@(Lambda identifiers body org) =
     if updated
-    then (True, Lambda identifiers body' (Synthetic "Rewritten lambda" []))
+    then (True, Lambda identifiers body' (Synthetic "Rewritten lambda" [org]))
     else (False, node)
     where
     (updated, body') = rewrite' body
+
+rewrite' node@(Conditional cond cons alt org) =
+    if a || b || c then (True, Conditional cond' cons' alt' (Synthetic "Rewritten conditional" [org]))
+    else (False,node)
+    where
+    (a, cond') = rewrite' cond
+    (b, cons') = rewrite' cons
+    (c, alt') = rewrite' alt
 
 rewrite' node = (False, node)
 
