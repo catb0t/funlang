@@ -3,9 +3,14 @@ module FunLang.Parser.Lexer where
 import Text.Parsec
 import qualified Text.Parsec.Token as Token
 
-opChar = oneOf "+-/*=:"
+opChar = oneOf "+-/*=<>|&:;§!@#$%?^~"
 
-keywords = ["if", "then", "elif", "else", "let", "in", "lambda"]
+keywords = [
+    "if", "then", "elif", "else",
+    "let", "in",
+    "lambda",
+    "prefix", "infix", "postfix"
+    ]
 
 langdef =
     Token.LanguageDef

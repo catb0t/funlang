@@ -5,17 +5,11 @@ import qualified Data.Map as Map
 data Associativity = Associative | LeftAssociative | RightAssociative | NonAssociative
     deriving (Show, Eq)
 
-data InfixOperator = InfixOp String Associativity Int
+data InfixOperator = InfixOp Associativity Int
     deriving (Show, Eq)
 
-infix_operators =
-    Map.fromList . map getName $
-        [
-            InfixOp "*" Associative 2,
-            InfixOp "+" Associative 1
-        ]
-    where
-    getName op@(InfixOp name _ _) = (name,op)
+data PrefixOperator = PrefixOp
+    deriving (Show, Eq)
 
 type Applicator node = node -> node -> node -> node
 type Stack node = [(InfixOperator,node)]
@@ -40,8 +34,8 @@ shunting_yard apply_fun first rest =
     pop (stack, queue) = error ("Cannot pop shunting yard") -- (" ++ show stack ++ ", " ++ show queue ++ ")")
    
     shunt ([], queue) (op, operand) = ([op], operand : queue)
-    shunt (stack@((InfixOp sName sAss sPrec, _):bottom), queue)
-        (op@(InfixOp _ iAss iPrec, _), operand) =
+    shunt (stack@((InfixOp sAss sPrec, _):bottom), queue)
+        (op@(InfixOp iAss iPrec, _), operand) =
         if ((iAss == Associative || iAss == LeftAssociative) && (iPrec <= sPrec)) ||
             (iAss == RightAssociative && iPrec < sPrec)
             then

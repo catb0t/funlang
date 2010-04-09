@@ -24,7 +24,7 @@ pretty (ApplicationExpr children pos) =
 
 pretty (PrefixExpr op operand pos) =
     text "Prefix" <+> prettyPos pos $$
-        prettyId op $$ pretty operand
+        nest 2 (prettyId op $$ pretty operand)
 
 pretty (ConditionExpr conds alt pos) =
     text "Conditional" <+> prettyPos pos $$
@@ -38,7 +38,14 @@ pretty (LetExpr decls body pos) =
         nest 2 prettydecls $$ text "in" $$ nest 2 (pretty body)
     where
     prettydecls = vcat (map prettydecl decls)
-    prettydecl (identifier, def) = prettyId identifier $$ nest 2 (equals $$ pretty def)
+    prettydecl (identifier, decl, def) =
+        decl' <+> prettyId identifier $$ nest 2 (equals $$ pretty def)
+        where
+        decl' =
+            case decl of
+                SimpleDecl -> empty
+                InfixDecl op -> text (show op)
+                PrefixDecl _ -> text "prefix"
 
 pretty (LambdaExpr identifiers body pos) =
     text "Lambda" <+> prettyPos pos $$

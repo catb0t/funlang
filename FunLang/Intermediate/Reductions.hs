@@ -24,7 +24,7 @@ legalize free node@(Lambda _ _ _) =
         illegals = [identifier | identifier <- ids, Set.member identifier allFree]
         legalname (forbidden,name) =
             if Set.member name forbidden
-            then legalname (forbidden,('#':name))
+            then legalname (forbidden,('\'':name))
             else (Set.insert name forbidden, name)
         legals =
             snd $ foldl reduce (allFree, []) illegals

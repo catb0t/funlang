@@ -4,6 +4,7 @@ import Text.Parsec
 
 import FunLang.Parser.Lexer
 import FunLang.Parser.AST
+import FunLang.Parser.Infix
 
 parse_id = do
     pos <- getPosition
@@ -77,26 +78,55 @@ cond_expr = do
         return (condition, consequent)
             <?> "condition \"then\" consequent"
 
-declaration = do
-    pos <- getPosition
-    name <- identifier
-    expr <- (decl <|> fun_decl)
-    return ((name,pos), expr)
-        <?> "declaration"
+definition = 
+    simple_def <|> function_def
+        <?> "definition"
     where
-    decl = do
+    simple_def = do
         reservedOp "="
         expr <- expression
         return expr
-            <?> "simple declaration"
-    fun_decl = do
+            <?> "simple definition"
+    function_def = do
         pos <- getPosition
         args <- arguments
         reservedOp "="
         expr <- expression
         return (LambdaExpr args expr pos)
-            <?> "function declaration"
-        
+            <?> "function definition"
+            
+simple_declaration = do
+    ident <- identifier
+    return (ident, SimpleDecl)
+        <?> "simple declaration"
+
+operator_declaration = do
+    ident <- operator
+    decl <- infix_declaration <|> prefix_declaration
+    return (ident, decl)
+    where
+    associativity =
+        do { reserved "left" ; return LeftAssociative } <|>
+        do { reserved "right" ; return RightAssociative } <|>
+        do { reserved "non" ; return NonAssociative } <|>
+        return Associative
+            <?> "associativity"
+    infix_declaration = do
+        reserved "infix"
+        assoc <- associativity
+        reserved "associative"
+        prec <- natural
+        return $ InfixDecl (InfixOp assoc (fromInteger prec))
+    prefix_declaration = do
+        reserved "prefix"
+        return $ PrefixDecl PrefixOp
+
+declaration = do
+    pos <- getPosition
+    (ident, decl) <- simple_declaration <|> operator_declaration
+    def <- definition
+    return ((ident,pos), decl, def)
+        <?> "declaration"
         
 declarations = commaSep1 declaration <?> "declarations"
 
