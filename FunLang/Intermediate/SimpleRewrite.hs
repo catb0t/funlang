@@ -44,6 +44,12 @@ rewrite' node@(Application (lambda@(Lambda identifiers body _):rest) org) =
     applied = Application (wrapper:args') (Synthetic "Prune application" [])
     wrapper = betaReduce subs lambda
 
+rewrite' (Lambda largs (Lambda rargs body rorg) lorg) =
+    (True, Lambda args' body' (Synthetic "Nested lambdas" [lorg, rorg]))
+    where
+    args' = largs ++ rargs
+    body' = rewrite body
+
 rewrite' node@(Lambda identifiers body org) =
     if updated
     then (True, Lambda identifiers body' (Synthetic "Rewritten lambda" [org]))
