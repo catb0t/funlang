@@ -6,30 +6,17 @@ import Data.Maybe
 import FunLang.Intermediate.Desugared
 import FunLang.Intermediate.Reductions
 
-rewriteApplication app@(Application args org) = 
-    if rewritten
-    then rewrite' $ Application args' (Synthetic "Application rewrite" [org])
-    else (False, app)
-    where
-    (updated, args') = unzip (map rewrite' args)
-    rewritten = any id updated
-
 rewrite :: Desugared -> Desugared
-rewrite node =
-    rew' (True,node)
+rewrite (Application (child:[]) _) = rewrite child
+rewrite (Application ((Application largs lorg):rargs) rorg) =
+    rewrite $ Application args' (Synthetic "Nested applications" [lorg, rorg])
     where
-    rew' (False, node) = node
-    rew' (True, node) = rew' (rewrite' node)
+    args' = (largs ++ rargs)
 
-rewrite' :: Desugared -> (Bool, Desugared)
-rewrite' (Application (child:[]) _) = (True, child)
-rewrite' (Application ((Application largs lorg):rargs) rorg) =
-    rewrite' $ Application (largs ++ rargs) (Synthetic "Nested applications" [lorg, rorg])
-
-rewrite' node@(Application (lambda@(Lambda identifiers body _):rest) org) =
+rewrite (Application args@(lambda@(Lambda identifiers body _):rest) org) =
     if Map.null subs
-    then rewriteApplication node
-    else rewrite' $ 
+    then Application (map rewrite args) org
+    else rewrite $ 
         if null rest'
         then applied
         else Application (applied:rest') (Synthetic "Rewritten lambda application" [org])
@@ -39,31 +26,27 @@ rewrite' node@(Application (lambda@(Lambda identifiers body _):rest) org) =
     rest' = drop arity rest
     count = countOccurences (take (length args) identifiers) body
     subs = Map.fromList $
-        [(identifier, arg) | (identifier, arg) <- zip identifiers args, 2 >= (fromJust (Map.lookup identifier count))]
+        [(identifier, arg) | (identifier, arg) <- zip identifiers args, 1 >= (fromJust (Map.lookup identifier count))]
     args' = [arg | (identifier, arg) <- zip identifiers args, Map.notMember identifier subs]
     applied = Application (wrapper:args') (Synthetic "Prune application" [])
     wrapper = betaReduce subs lambda
 
-rewrite' (Lambda largs (Lambda rargs body rorg) lorg) =
-    (True, Lambda args' body' (Synthetic "Nested lambdas" [lorg, rorg]))
+rewrite (Lambda largs (Lambda rargs body rorg) lorg) =
+    rewrite $ Lambda args' body (Synthetic "Nested lambdas" [lorg, rorg])
     where
     args' = largs ++ rargs
+
+rewrite (Lambda identifiers body org) =
+    Lambda identifiers body' org
+    where
     body' = rewrite body
 
-rewrite' node@(Lambda identifiers body org) =
-    if updated
-    then (True, Lambda identifiers body' (Synthetic "Rewritten lambda" [org]))
-    else (False, node)
+rewrite (Conditional cond cons alt org) =
+    Conditional cond' cons' alt' org
     where
-    (updated, body') = rewrite' body
+    cond' = rewrite cond
+    cons' = rewrite cons
+    alt' = rewrite alt
 
-rewrite' node@(Conditional cond cons alt org) =
-    if a || b || c then (True, Conditional cond' cons' alt' (Synthetic "Rewritten conditional" [org]))
-    else (False,node)
-    where
-    (a, cond') = rewrite' cond
-    (b, cons') = rewrite' cons
-    (c, alt') = rewrite' alt
-
-rewrite' node = (False, node)
+rewrite node = node
 
