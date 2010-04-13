@@ -5,7 +5,7 @@ import qualified Data.Map as Map
 import FunLang.Intermediate.Desugared
 
 data Function =
-    ClosureFunction [Frame] [Identifier] Desugared
+    ClosureFunction [Frame] [Identifier] DesugarTree
     | BuiltInFunction Int ([Value] -> Value)
     | PartialApplication Function [Value]
    

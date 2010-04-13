@@ -2,6 +2,7 @@ module FunLang.Intermediate.Desugared where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.Tree as Tree
 
 import FunLang.Parser.AST (SourcePos)
 
@@ -11,53 +12,50 @@ data Origin = Source SourcePos | Synthetic String [Origin]
     deriving (Show,Eq)
 
 data Desugared =
-    Application [Desugared] Origin
-    | Lambda [Identifier] Desugared Origin
-    | Conditional Desugared Desugared Desugared Origin
+    Application Origin
+    | Lambda [Identifier] Origin
+    | Conditional Origin
     | Constant Integer Origin
     | Id Identifier Origin
     deriving (Show,Eq)
     
-origin :: Desugared -> Origin
-origin (Application _ org) = org
-origin (Lambda _ _ org) = org
-origin (Conditional _ _ _ org) = org
-origin (Constant _ org) = org
-origin (Id _ org) = org
+type DesugarTree = Tree.Tree Desugared
 
-children :: Desugared -> [Desugared]
-children (Application cs _) = cs
-children (Lambda _ body _) = [body]
-children (Conditional cond cons alt _) = [cond,cons,alt]
-children _ = []
+origin :: DesugarTree -> Origin
+origin (Tree.Node (Application org) _) = org
+origin (Tree.Node (Lambda _ org) _) = org
+origin (Tree.Node (Conditional org) _) = org
+origin (Tree.Node (Constant _ org) _) = org
+origin (Tree.Node (Id _ org) _) = org
 
-freeVariables :: Desugared -> (Set.Set Identifier)
+
+freeVariables :: DesugarTree -> (Set.Set Identifier)
 freeVariables = Map.keysSet . countFree' Set.empty
 
-countFree :: Desugared -> Map.Map Identifier Int
+countFree :: DesugarTree -> Map.Map Identifier Int
 countFree = countFree' Set.empty
 
-countFree' :: Set.Set Identifier -> Desugared -> Map.Map Identifier Int
-countFree' bound (Lambda identifiers body _) =
+countFree' :: Set.Set Identifier -> DesugarTree -> Map.Map Identifier Int
+countFree' bound (Tree.Node (Lambda identifiers _) (body:[])) =
     countFree' (Set.union bound (Set.fromList identifiers)) body
     
-countFree' bound (Id x _) =
+countFree' bound (Tree.Node (Id x _) []) =
     if Set.member x bound
     then Map.empty
     else Map.singleton x 1
 
 countFree' bound node =
-    Map.unionsWith (+) . map (countFree' bound) $ children node
+    Map.unionsWith (+) . map (countFree' bound) $ Tree.subForest node
 
 
-countOccurences :: [Identifier] -> Desugared  -> Map.Map Identifier Int
+countOccurences :: [Identifier] -> DesugarTree  -> Map.Map Identifier Int
 countOccurences identifiers = countOccurences' (Map.fromList $ zip identifiers [0,0..]) Set.empty
 
-countOccurences' :: Map.Map Identifier Int -> Set.Set Identifier -> Desugared -> Map.Map Identifier Int
-countOccurences' count bound (Lambda identifiers body _) =
+countOccurences' :: Map.Map Identifier Int -> Set.Set Identifier -> DesugarTree -> Map.Map Identifier Int
+countOccurences' count bound (Tree.Node (Lambda identifiers _) (body:[])) =
     countOccurences' count (Set.union bound (Set.fromList identifiers)) body
     
-countOccurences' count bound (Id x _) =
+countOccurences' count bound (Tree.Node (Id x _) []) =
     if Set.member x bound
     then count
     else Map.adjust (+1) x count
@@ -65,7 +63,7 @@ countOccurences' count bound (Id x _) =
 countOccurences' count bound node =
     Map.unionWith (+) count childcount
     where
-    childcount = Map.unionsWith (+) . map (countOccurences' zeros bound) $ children node
+    childcount = Map.unionsWith (+) . map (countOccurences' zeros bound) $ Tree.subForest node
     zeros = Map.fromList [(identifier, 0) | identifier <- Map.keys count, Set.notMember identifier bound]
 
 

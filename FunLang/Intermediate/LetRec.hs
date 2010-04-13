@@ -3,6 +3,7 @@ module FunLang.Intermediate.LetRec where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Tree as Tree
 import Data.Maybe
 
 import FunLang.Intermediate.Desugared
@@ -19,7 +20,7 @@ closure recurse set =
         unbound = [expand | (x, Just expand) <- zip list (map (\x -> Map.lookup x recurse) list), not (Set.member x bound)]
         expand = Set.unions (map (closure' (Set.union bound set)) unbound)        
 
-recursiveDecls :: [(Identifier, Desugared)] -> Map.Map Identifier (Set.Set Identifier)
+recursiveDecls :: [(Identifier, DesugarTree)] -> Map.Map Identifier (Set.Set Identifier)
 recursiveDecls decls =
     Map.fromList recurse
     where
@@ -44,16 +45,16 @@ scopes depmap =
         alter Nothing = Just [identifier]
         alter (Just list) = Just (identifier : list)
 
-simplelet :: Origin -> [(Identifier, Desugared)] -> Desugared -> Desugared
+simplelet :: Origin -> [(Identifier, DesugarTree)] -> DesugarTree -> DesugarTree
 simplelet _ [] body = body
 simplelet org decls body =
-    Application (body':values) (Synthetic "Simple Let application" [org])
+    Tree.Node (Application (Synthetic "Simple Let application" [org])) (body':values)
     where
     (args,values) = unzip decls
-    body' = (Lambda args body (Synthetic "Simple Let body" [origin body]))
+    body' = Tree.Node (Lambda args (Synthetic "Simple Let body" [origin body])) [body]
 
 
-letselect1 :: Origin -> [Identifier] -> Set.Set Identifier -> Set.Set Identifier -> Desugared -> Identifier -> (Desugared, Maybe (Identifier,[Identifier],Desugared,Desugared))
+letselect1 :: Origin -> [Identifier] -> Set.Set Identifier -> Set.Set Identifier -> DesugarTree -> Identifier -> (DesugarTree, Maybe (Identifier,[Identifier],DesugarTree,DesugarTree))
 letselect1 org locals declset dependencies definition decl =
     if null localdeps then  (definition, Nothing)
     else
@@ -62,24 +63,24 @@ letselect1 org locals declset dependencies definition decl =
     where
     localdeps = [loc | loc <- locals, Set.member loc declset]
     selector deps =
-        Application (
-            (Id decl (Synthetic "Let selector function" [])) :
-            [Id x (Synthetic "Let selector parameter" []) | x <- deps] )
-                (Synthetic "Let selector application" [origin definition])
-
-rewrite :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> (Desugared -> Desugared) -> Identifier -> Desugared
+	Tree.Node
+	        (Application (Synthetic "Let selector application" [origin definition]))
+        	    ((Tree.Node (Id decl (Synthetic "Let selector function" [])) []) :
+		            [Tree.Node (Id x (Synthetic "Let selector parameter" [])) [] | x <- deps] )
+ 
+rewrite :: Origin -> Map.Map Identifier DesugarTree -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> (DesugarTree -> DesugarTree) -> Identifier -> DesugarTree
 rewrite org definitions dependencies locals substitute local =
     case (Map.lookup local dependencies) of
         Nothing -> def
         Just deps ->
-            Lambda localdeps (substitute def) (Synthetic ("Rewritten Let definition for " ++ local) [origin def])
+            Tree.Node (Lambda localdeps (Synthetic ("Rewritten Let definition for " ++ local) [origin def])) [substitute def]
             where
             localdeps = [loc | loc <- locals, Set.member loc deps]
     where
     def = fromJust (Map.lookup local definitions)
 
 
-letselect :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> [Identifier] -> ([Desugared],[Desugared])
+letselect :: Origin -> Map.Map Identifier DesugarTree -> Map.Map Identifier (Set.Set Identifier) -> [Identifier] -> [Identifier] -> ([DesugarTree],[DesugarTree])
 letselect org definitions dependencies locals decls = 
     (selectors, rewrites)
     where
@@ -91,7 +92,7 @@ letselect org definitions dependencies locals decls =
     rewrites = map (rewrite org definitions dependencies locals substitute) locals
     substitute def = alphaSubstitute substitutions def
 
-letscope :: Origin -> Map.Map Identifier Desugared -> Map.Map Identifier (Set.Set Identifier) -> Desugared -> ([Identifier],[Identifier]) -> Desugared
+letscope :: Origin -> Map.Map Identifier DesugarTree -> Map.Map Identifier (Set.Set Identifier) -> DesugarTree -> ([Identifier],[Identifier]) -> DesugarTree
 letscope _ _ _ body (_, []) = body
 
 letscope org definitions _ body ([], decls) =
@@ -100,13 +101,13 @@ letscope org definitions _ body ([], decls) =
 letscope org definitions dependencies body (locals, decls) = 
     wrapped
     where
-    wrapped = Application (wrapper : rewrites) (Synthetic "Recursive Let scope application" [org])
-    wrapper = Lambda locals body' (Synthetic "Recursive Let scope wrapper" [])
-    body' = Application (scopebody:selectors) (Synthetic "Recursive Let body application" [])
-    scopebody = Lambda decls body (Synthetic "Recursive Let scope body" [org, origin body])
+    wrapped = Tree.Node (Application (Synthetic "Recursive Let scope application" [org])) (wrapper : rewrites)
+    wrapper = Tree.Node (Lambda locals (Synthetic "Recursive Let scope wrapper" [])) [body']
+    body' = Tree.Node (Application (Synthetic "Recursive Let body application" [])) (scopebody:selectors)
+    scopebody = Tree.Node (Lambda decls (Synthetic "Recursive Let scope body" [org, origin body])) [body]
     (selectors, rewrites) = letselect org definitions dependencies locals decls
 
-recursivelet :: Origin -> Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier Desugared -> Desugared -> Desugared
+recursivelet :: Origin -> Map.Map Identifier (Set.Set Identifier) -> Map.Map Identifier DesugarTree -> DesugarTree -> DesugarTree
 recursivelet org recursive definitions body =
     if Map.null recursive then body
     else foldl reduce body scopelocals
@@ -120,7 +121,7 @@ recursivelet org recursive definitions body =
         where
         loc = [decl | decl <- decls, Set.notMember decl defined]
 
-letrec :: Origin -> [(Identifier, Desugared)] -> Desugared -> Desugared
+letrec :: Origin -> [(Identifier, DesugarTree)] -> DesugarTree -> DesugarTree
 letrec _ [] body = body
 letrec org decls body =
     recursivelet org recursive definitions body' 
