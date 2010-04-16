@@ -13,7 +13,6 @@ import FunLang.Interpreter.Values
 import FunLang.Intermediate.SimpleRewrite
 import qualified FunLang.Parser.Pretty as PrettyAST
 import qualified FunLang.Intermediate.Pretty as PrettyDsg
-import qualified FunLang.Interpreter.Pretty as PrettyValue
 
 binary_fun op ((IntegerValue x):(IntegerValue y):[]) = IntegerValue (op x y)
 binary_fun _ args = error ("Invalid parameters for binary function" ++ show args)
@@ -64,7 +63,7 @@ output (Right ast) = do
     putStrLn (PrettyDsg.pprint rew)
     putStrLn "===== Evaluated ====="
     let value = evaluate [builtins] rew
-    putStrLn (PrettyValue.pprint value)
+    print value
 
 repl = do
     line <- getLine

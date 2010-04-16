@@ -4,29 +4,27 @@ import qualified Data.Map as Map
 
 import FunLang.Intermediate.Desugared
 
-data Function =
-    ClosureFunction [Frame] [Identifier] DesugarTree
-    | BuiltInFunction Int ([Value] -> Value)
-    | PartialApplication Function [Value]
+data Function code =
+    ClosureFunction [Frame code] [Identifier] code
+    | BuiltInFunction Int ([Value code] -> (Value code))
+    | PartialApplication (Function code) [Value code]
    
-instance Show Function where
-    show (ClosureFunction _ identifiers body) = "Closure " ++ show identifiers ++ " " ++ show body
-    show (BuiltInFunction x _) = "Built-In arity: " ++ show x
-    show (PartialApplication fun args) = "Partial application " ++ show fun ++ " " ++ show args
-
-data Value =
+data Value code =
     IntegerValue Integer
-    | FunctionValue Function
-    deriving Show
+    | FunctionValue (Function code)
 
-arity :: Function -> Int
+instance Show (Value code) where
+    show (IntegerValue value) = show value 
+    show (FunctionValue fun) = "Function (arity: " ++ show (arity fun) ++ ")"
+
+arity :: (Function code) -> Int
 arity (ClosureFunction _ identifiers _) = length identifiers
 arity (BuiltInFunction x _) = x
 arity (PartialApplication fun args) = arity fun - length args
 
-type Frame = Map.Map Identifier Value
+type Frame code = Map.Map Identifier (Value code)
 
-lookupValue :: [Frame] -> Identifier -> Maybe Value
+lookupValue :: [Frame code] -> Identifier -> Maybe (Value code)
 lookupValue [] _ = Nothing
 lookupValue (top:bottom) identifier = 
     case (Map.lookup identifier top) of

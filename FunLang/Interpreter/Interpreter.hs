@@ -6,7 +6,6 @@ import qualified Data.Tree as Tree
 import FunLang.Intermediate.Desugared
 import FunLang.Interpreter.Values
 
-applicate' :: Function -> [Value] -> Value
 applicate' (ClosureFunction frames identifiers body) args =
     if length identifiers /= length args
         then error "Cannot apply lambda function, incorrect arity"
@@ -22,7 +21,6 @@ applicate' (BuiltInFunction ar builtin) args =
 applicate' (PartialApplication fun largs) rargs = applicate' fun (largs ++ rargs)
 
 
-applicate :: Function -> Value -> Value
 applicate (PartialApplication fun partargs) arg = 
     if arity fun == length args
         then applicate' fun args
@@ -36,7 +34,6 @@ applicate fun arg =
         else FunctionValue (PartialApplication fun [arg])
 
 
-evaluate :: [Frame] -> DesugarTree -> Value
 evaluate frames (Tree.Node (Application origin) children) =
     foldl apply_value fun args
     where
