@@ -28,13 +28,17 @@ unique forbidden prefix index =
     ident = prefix ++ ('#' : show index)
 
 newLabel (_, st) prefix = do
-    (State _ _ _ labels _ _ _) <- readSTRef st
-    return $ unique labels prefix 0
+    (State c i b labels g lo p) <- readSTRef st
+    let lab = unique labels prefix 0
+    writeSTRef st (State c i b (Set.insert lab labels) g lo p)
+    return lab
 
 newLocal (self, st) prefix = do
-    (State _ _ _ _ globals locals _) <- readSTRef st
+    (State c i b la globals locals p) <- readSTRef st
     let forbidden = Set.insert self (Set.union locals globals)
-    return $ unique forbidden prefix 0
+    let loc = unique forbidden prefix 0
+    writeSTRef st (State c i b la globals (Set.insert loc locals) p)
+    return loc
 
 getGlobals (_, st) = do
     state <- readSTRef st
