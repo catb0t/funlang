@@ -22,7 +22,7 @@ arity (ClosureFunction _ identifiers _) = length identifiers
 arity (BuiltInFunction x _) = x
 arity (PartialApplication fun args) = arity fun - length args
 
-type Frame code = Map.Map Identifier (Value code)
+type Frame code = Map.Map String (Value code)
 
 lookupValue :: [Frame code] -> Identifier -> Maybe (Value code)
 lookupValue [] _ = Nothing

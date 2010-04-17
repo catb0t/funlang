@@ -14,9 +14,11 @@ lookupGlobal globals locals ident =
 
 filterLocals (top:bottom) label = top:[(lab, defs) | (lab, defs) <- bottom, lab /= label]
 
-simulate globals (Function args blocklist@((entry, entrybb):_)) values =
-    simulateBB globals [locals] blocks entry entrybb
+simulate globals (Function args blocklist@((entry, entrybb):_) privates) values =
+    simulateBB globals' [locals] blocks entry entrybb
     where
+    globals' = frame : globals
+    frame = Map.map (\fun@(Function args _ _) -> FunctionValue (ClosureFunction globals' args fun)) privates
     locals = ("", Map.fromList $ zip args values)
     blocks = Map.fromList blocklist
 

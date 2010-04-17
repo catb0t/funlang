@@ -1,7 +1,9 @@
 module FunLang.SSA.SSA where
 
+import qualified Data.Map as Map
+
 data Function =
-    Function [String] [(String, BasicBlock)]
+    Function [String] [(String, BasicBlock)] (Map.Map String Function)
     deriving Show
 
 data BasicBlock =

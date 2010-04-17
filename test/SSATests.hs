@@ -27,6 +27,7 @@ fac =
                 ("value", Phi [("loop", "product"), ("entry", "initial")])
                 ]
                 (Return "value"))]
+    Map.empty
 
 fac_rec =
     Function ["x"] [
@@ -48,6 +49,7 @@ fac_rec =
                 ("product", FunCall "mul" ["rec", "x"])
                 ]
                 (Return "product"))]
+    Map.empty
 
 
 wrap f = FunctionValue (BuiltInFunction 2 (\(IntegerValue a : IntegerValue b : []) -> IntegerValue (f a b)))

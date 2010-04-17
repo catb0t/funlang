@@ -1,6 +1,7 @@
 module Main where
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import System.Environment (getArgs)
 
 import Text.Parsec
@@ -9,7 +10,9 @@ import FunLang.Parser.Desugar
 import FunLang.Parser.Symbols
 import FunLang.Parser.Infix
 import FunLang.Interpreter.Interpreter
+import FunLang.Interpreter.SSA
 import FunLang.Interpreter.Values
+import FunLang.Compiler.Compiler
 import FunLang.Intermediate.SimpleRewrite
 import qualified FunLang.Parser.Pretty as PrettyAST
 import qualified FunLang.Intermediate.Pretty as PrettyDsg
@@ -61,9 +64,15 @@ output (Right ast) = do
     putStrLn "===== Rewritten ====="
     let rew = rewrite dsg
     putStrLn (PrettyDsg.pprint rew)
+    putStrLn "===== SSA ====="
+    let ssa = compile "main" Set.empty [] rew
+    print ssa
     putStrLn "===== Evaluated ====="
     let value = evaluate [builtins] rew
     print value
+    putStrLn "===== Simulated ====="
+    let simval = simulate [builtins] ssa []
+    print simval
 
 repl = do
     line <- getLine
