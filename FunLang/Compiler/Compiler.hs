@@ -40,6 +40,10 @@ newLocal (self, st) prefix = do
     writeSTRef st (State c i b la globals (Set.insert loc locals) p)
     return loc
 
+getCurrentBlock (_, st) = do
+    state <- readSTRef st
+    return $ currentBlock state
+
 getGlobals (_, st) = do
     state <- readSTRef st
     return $ globals state
@@ -104,11 +108,16 @@ compile' compiler (Tree.Node (Conditional org) (cond:cons:alt:[])) = do
 
     condLoc <- compile' compiler cond
     emitt compiler (Branch condLoc consLab altLab) consLab
+
     consLoc <- compile' compiler cons
+    consBlock <- getCurrentBlock compiler
     emitt compiler (Jump condLab) altLab
+
     altLoc <- compile' compiler alt
+    altBlock <- getCurrentBlock compiler
     emitt compiler (Jump condLab) condLab
-    emit compiler valLoc (Phi [(consLab, consLoc), (altLab, altLoc)])
+
+    emit compiler valLoc (Phi [(consBlock, consLoc), (altBlock, altLoc)])
     return valLoc
 
 
