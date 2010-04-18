@@ -89,6 +89,7 @@ compile' compiler (Tree.Node (Application org) children) = do
 compile' compiler lambda@(Tree.Node (Lambda args org) (body:[])) = do
     funcGlob <- newLocal compiler "lambda"
     globals <- getGlobals compiler
+    let free = Set.toList $ Set.difference (freeVariables lambda) globals
     func <- compileST funcGlob globals (free ++ args) body
     addPrivate compiler funcGlob func
     if null free
@@ -97,8 +98,6 @@ compile' compiler lambda@(Tree.Node (Lambda args org) (body:[])) = do
             partLoc <- newLocal compiler "partial_lambda"
             emit compiler partLoc (FunCall funcGlob free)
             return partLoc
-    where
-    free = Set.toList $ freeVariables lambda
 
 compile' compiler (Tree.Node (Conditional org) (cond:cons:alt:[])) = do
     consLab <- newLabel compiler "consequent"

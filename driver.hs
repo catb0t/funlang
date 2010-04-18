@@ -66,7 +66,7 @@ output (Right ast) = do
     let rew = rewrite dsg
     putStrLn (PrettyDsg.pprint rew)
     putStrLn "===== SSA ====="
-    let ssa = compile "main" Set.empty [] rew
+    let ssa = compile "main" (Map.keysSet builtins) [] rew
     putStrLn (PrettySSA.pprint ssa)
     putStrLn "===== Evaluated ====="
     let value = evaluate [builtins] rew
